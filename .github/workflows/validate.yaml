@@ -1,0 +1,42 @@
+name: Process New Entries in File
+
+on:
+  push:
+    paths:
+      - './files'  # Specify the file you're watching for new entries
+    branches:
+      - main  # Adjust if you're using a different branch
+
+jobs:
+  process_entries:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Get previous commit hash
+        id: previous_commit
+        run: |
+          # Get the previous commit hash for comparison
+          git log -n 2 --pretty=format:"%H" > commit_hashes.txt
+          tail -n 1 commit_hashes.txt > previous_commit_hash.txt
+          
+      - name: Get diff for new entries
+        id: get_diff
+        run: |
+          # Compare the previous commit with the latest one to get the changes
+          previous_commit=$(cat previous_commit_hash.txt)
+          echo "Comparing changes between $previous_commit and HEAD"
+          
+          # Use git diff to find new lines added to the file
+          git diff $previous_commit HEAD -- path/to/your/file.txt > new_entries.diff
+          
+          # Display the diff to verify it
+          cat new_entries.diff
+
+      - name: Process new entries (Example with Python)
+        run: |
+          # Now that we have the new entries, you can process them
+          cat process_new_entries.py
+
