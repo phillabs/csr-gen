@@ -3,26 +3,26 @@ name: Call Discord Notification
 on:
   push:
     branches: [ main ]
-  # Optional: Add manual trigger
   workflow_dispatch:
-    inputs:
-      custom-message:
-        description: 'Custom message to send'
-        required: false
-        type: string
 
 jobs:
-  notify:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call Discord Notification
-        uses: phillabs/notify-discord/.github/workflows/v3-discord-notification.yml@main
-        with:
-          message: |
-            🔔 New ${{ github.event_name }} on ${{ github.repository }}
-            **Branch:** ${{ github.ref }}
-            **Actor:** ${{ github.actor }}
-          title: "Repository Update"
-          color: "5865F2"  # Discord Blue
-        secrets:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  # Example 1: With custom message
+  notify-custom:
+    uses: phillabs/notify-discord/.github/workflows/discord-notify.yml@main
+    with:
+      message: |
+        🔔 New ${{ github.event_name }} on ${{ github.repository }}
+        **Branch:** ${{ github.ref }}
+        **Actor:** ${{ github.actor }}
+      title: "Repository Update"
+    secrets:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+
+  # Example 2: Using defaults
+  notify-default:
+    uses: phillabs/notify-discord/.github/workflows/discord-notify.yml@main
+    with:
+      repository: ${{ github.repository }}
+      event: ${{ github.event_name }}
+    secrets:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
