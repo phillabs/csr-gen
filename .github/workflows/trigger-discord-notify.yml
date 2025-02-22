@@ -1,38 +1,33 @@
-name: Call Discord Notification
+name: Complex Workflow with Discord Notification
 
 on:
-  # Define your triggers here
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
-  # Manual trigger
-  workflow_dispatch:
-    inputs:
-      custom-message:
-        description: 'Custom message to send'
-        required: false
-        type: string
 
 jobs:
-  call-discord:
+  build:
     runs-on: ubuntu-latest
     steps:
-      # Optional: Checkout if you need repository content
       - uses: actions/checkout@v3
+      
+      - name: Build step
+        id: build
+        run: |
+          # Your build steps here
+          echo "build_status=success" >> $GITHUB_OUTPUT
 
-      # Call the reusable workflow
-      - name: Call Discord Notification
-        uses: ./.github/workflows/discord-notify.yml@main  # Replace with your repository reference
-        with:
-          message: |
-            ${{ github.event.inputs.custom-message || format('
-              🔔 New {0} on {1}
-              **Branch:** {2}
-              **Actor:** {3}
-              **Commit:** {4}
-            ', github.event_name, github.repository, github.ref, github.actor, github.event.head_commit.message) }}
-          title: "Repository Update"
-          color: "5865F2"  # Discord Blue
-        secrets:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+  notify:
+    needs: build
+    uses: owner/repo/.github/workflows/discord-notify.yml@main
+    with:
+      message: |
+        **Build Status:** ${{ needs.build.outputs.build_status }}
+        **Repository:** ${{ github.repository }}
+        **Commit:** ${{ github.event.head_commit.message }}
+        **Author:** ${{ github.actor }}
+        
+        [View Build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+      title: "Build Notification"
+      color: ${{ needs.build.outputs.build_status == 'success' && '00FF00' || 'FF0000' }}
+    secrets:
+      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
