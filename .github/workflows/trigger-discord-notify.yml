@@ -23,7 +23,7 @@ jobs:
 
       # Call the reusable workflow
       - name: Call Discord Notification
-        uses: ./.github/workflows/discord-notification.yml@main  # Replace with your repository reference
+        uses: ./.github/workflows/discord-notify.yml@main  # Replace with your repository reference
         with:
           message: |
             ${{ github.event.inputs.custom-message || format('
