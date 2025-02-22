@@ -18,7 +18,7 @@ jobs:
 
   notify:
     needs: build
-    uses: owner/repo/.github/workflows/discord-notify.yml@main
+    uses: phillabs/notify-discord/.github/workflows/discord-notify.yml@main
     with:
       message: |
         **Build Status:** ${{ needs.build.outputs.build_status }}
