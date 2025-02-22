@@ -1,54 +1,28 @@
-name: Discord Notification
+name: Call Discord Notification
 
-# Define this as a reusable workflow
 on:
-  workflow_call:
+  push:
+    branches: [ main ]
+  # Optional: Add manual trigger
+  workflow_dispatch:
     inputs:
-      message:
-        required: true
-        type: string
-        description: "Message to send to Discord"
-      title:
+      custom-message:
+        description: 'Custom message to send'
         required: false
         type: string
-        default: "GitHub Notification"
-        description: "Title of the message"
-      color:
-        required: false
-        type: string
-        default: "5865F2"
-        description: "Color of the embed message (hex without #)"
-    secrets:
-      DISCORD_WEBHOOK:
-        required: true
-        description: "Discord webhook URL"
 
 jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - name: Send Discord Notification
-        uses: actions/github-script@v6
+      - name: Call Discord Notification
+        uses: phillabs/notify-discord/.github/workflows/v3-discord-notification.yml@main
         with:
-          script: |
-            const fetch = require('node-fetch');
-            
-            const embed = {
-              title: '${{ inputs.title }}',
-              description: '${{ inputs.message }}',
-              color: parseInt('${{ inputs.color }}', 16),
-              timestamp: new Date(),
-              footer: {
-                text: 'GitHub Action Notification'
-              }
-            };
-            
-            await fetch('${{ secrets.DISCORD_WEBHOOK }}', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                embeds: [embed]
-              })
-            });
+          message: |
+            🔔 New ${{ github.event_name }} on ${{ github.repository }}
+            **Branch:** ${{ github.ref }}
+            **Actor:** ${{ github.actor }}
+          title: "Repository Update"
+          color: "5865F2"  # Discord Blue
+        secrets:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
