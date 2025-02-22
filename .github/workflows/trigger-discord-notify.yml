@@ -8,7 +8,7 @@ on:
 jobs:
   # Example 1: With custom message
   notify-custom:
-    uses: phillabs/notify-discord/.github/workflows/discord-notify.yml@main
+    uses: phillabs/notify-discord/.github/workflows/v3-discord-notification.yml@main
     with:
       message: |
         🔔 New ${{ github.event_name }} on ${{ github.repository }}
