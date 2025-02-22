@@ -8,7 +8,7 @@ on:
 jobs:
   # Example 1: With custom message
   #notify-custom:
-    #uses: phillabs/notify-discord/.github/workflows/v3-discord-notification.yml@main
+    #uses: phillabs/notify-discord/.github/workflows/v2-discord-notification.yml@main
     #with:
       #message: |
        # 🔔 New ${{ github.event_name }} on ${{ github.repository }}
@@ -19,11 +19,11 @@ jobs:
       #DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
   # Example 2: Using defaults
-  notify-default:
-    uses: phillabs/notify-discord/.github/workflows/v3-discord-notification.yml@main
-    with:
-      #repository: ${{ github.repository }}
-      repository: phillabs/notify-discord
-      event: ${{ github.event_name }}
-    secrets:
-      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+#  notify-default:
+#    uses: phillabs/notify-discord/.github/workflows/v3-discord-notification.yml@main
+#    with:
+#      #repository: ${{ github.repository }}
+#      repository: phillabs/notify-discord
+#      event: ${{ github.event_name }}
+#    secrets:
+#      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
