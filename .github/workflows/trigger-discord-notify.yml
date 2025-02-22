@@ -1,33 +1,54 @@
-name: Complex Workflow with Discord Notification
+name: Discord Notification
 
+# Define this as a reusable workflow
 on:
-  push:
-    branches: [ main ]
+  workflow_call:
+    inputs:
+      message:
+        required: true
+        type: string
+        description: "Message to send to Discord"
+      title:
+        required: false
+        type: string
+        default: "GitHub Notification"
+        description: "Title of the message"
+      color:
+        required: false
+        type: string
+        default: "5865F2"
+        description: "Color of the embed message (hex without #)"
+    secrets:
+      DISCORD_WEBHOOK:
+        required: true
+        description: "Discord webhook URL"
 
 jobs:
-  build:
+  notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Build step
-        id: build
-        run: |
-          # Your build steps here
-          echo "build_status=success" >> $GITHUB_OUTPUT
-
-  notify:
-    needs: build
-    uses: phillabs/notify-discord/.github/workflows/discord-notification.yml@main
-    with:
-      message: |
-        **Build Status:** ${{ needs.build.outputs.build_status }}
-        **Repository:** ${{ github.repository }}
-        **Commit:** ${{ github.event.head_commit.message }}
-        **Author:** ${{ github.actor }}
-        
-        [View Build](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
-      title: "Build Notification"
-      color: ${{ needs.build.outputs.build_status == 'success' && '00FF00' || 'FF0000' }}
-    secrets:
-      DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+      - name: Send Discord Notification
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fetch = require('node-fetch');
+            
+            const embed = {
+              title: '${{ inputs.title }}',
+              description: '${{ inputs.message }}',
+              color: parseInt('${{ inputs.color }}', 16),
+              timestamp: new Date(),
+              footer: {
+                text: 'GitHub Action Notification'
+              }
+            };
+            
+            await fetch('${{ secrets.DISCORD_WEBHOOK }}', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                embeds: [embed]
+              })
+            });
