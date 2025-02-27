@@ -143,18 +143,15 @@ jobs:
           git commit -m "Update CSR database" || echo "No changes to commit"
           git push
 
-      - name: Send Slack notification
+
+
+      - name: Send Discord notification
         if: failure() || steps.process-csrs.outputs.duplicates_found == 'true'
-        uses: 8398a7/action-slack@v3
-        with:
-          status: custom
-          custom_payload: |
-            {
-              "text": "CSR Tracking Alert",
-              "attachments": [{
-                "color": "danger",
-                "text": "Duplicate CSRs detected or workflow failed. Please check the latest report."
+        run: |
+            curl -H "Content-Type: application/json" -X POST -d '{
+              "embeds": [{
+                "title": "CSR Tracking Alert",
+                "description": "Duplicate CSRs detected or workflow failed. Please check the latest report.",
+                "color": 16711680
               }]
-            }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+            }' ${{ secrets.DISCORD_WEBHOOK_URL }}
