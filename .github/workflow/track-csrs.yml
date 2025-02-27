@@ -1,14 +1,24 @@
 name: Track and Validate CSR Files
 
+#on:
+#  push:
+#    paths:
+#      - '**.csr'
+#  push:
+#    branches: [ main ]
+#  pull_request:
+#    paths:
+#      - '**.csr'
+#  #schedule:
+#  #  - cron: '0 0 * * *'  # Daily check of existing CSRs
+
 on:
+  # Define your triggers here
   push:
-    paths:
-      - '**.csr'
+    branches: [ main ]
   pull_request:
-    paths:
-      - '**.csr'
-  schedule:
-    - cron: '0 0 * * *'  # Daily check of existing CSRs
+    branches: [ main ]
+
 
 jobs:
   validate-csrs:
