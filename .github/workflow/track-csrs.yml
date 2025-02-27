@@ -25,8 +25,8 @@ jobs:
 
       - name: Create CSR tracking database if not exists
         run: |
-          if [ ! -f .github/csr_database.json ]; then
-            echo '{"csrs": []}' > .github/csr_database.json
+          if [ ! -f .github/csr_db.json ]; then
+            echo '{"csrs": []}' > .github/csr_db.json
           fi
 
       - name: Process CSR files
@@ -52,7 +52,7 @@ jobs:
                 '{file: $file, subject: $subject, pubkey: $pubkey, date: $date}')
               
               # Check for duplicates in existing database
-              is_duplicate=$(jq --argjson csr "$csr_info" '.csrs[] | select(.pubkey == $csr.pubkey or .subject == $csr.subject)' .github/csr_database.json)
+              is_duplicate=$(jq --argjson csr "$csr_info" '.csrs[] | select(.pubkey == $csr.pubkey or .subject == $csr.subject)' .github/csr_db.json)
               
               if [ -n "$is_duplicate" ]; then
                 echo "$csr_info" | jq -c '.' >> duplicate_csrs.json
@@ -65,8 +65,8 @@ jobs:
       - name: Update CSR database
         run: |
           # Merge new CSRs into database
-          jq -s '.[0].csrs += .[1] | .[0]' .github/csr_database.json new_csrs.json > temp_database.json
-          mv temp_database.json .github/csr_database.json
+          jq -s '.[0].csrs += .[1] | .[0]' .github/csr_db.json new_csrs.json > temp_database.json
+          mv temp_database.json .github/csr_db.json
 
       - name: Generate report
         run: |
@@ -129,7 +129,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add .github/csr_database.json
+          git add .github/csr_db.json
           git commit -m "Update CSR database" || echo "No changes to commit"
           git push
 
