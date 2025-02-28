@@ -1,0 +1,8 @@
+- name: Create CSR tracking database if not exists
+  run: |
+    mkdir -p .github
+    if [ ! -f .github/csr_db.json ]; then
+      echo '{"csrs": []}' > .github/csr_db.json
+    fi
+    # Validate JSON format
+    jq '.' .github/csr_db.json || (echo '{"csrs": []}' > .github/csr_db.json)
