@@ -35,42 +35,57 @@ jobs:
 
       - name: Create CSR tracking database if not exists
         run: |
-          if [ ! -f .github/csr_db.json ]; then
-            echo '{"csrs": []}' > .github/csr_db.json
-          fi
+            mkdir -p .github
+            if [ ! -f .github/csr_db.json ]; then
+              echo '{"csrs": []}' > .github/csr_db.json
+            fi
+            # Validate JSON format
+            jq '.' .github/csr_db.json || (echo '{"csrs": []}' > .github/csr_db.json)
+     
 
       - name: Process CSR files
         id: process-csrs
         run: |
-          # Create temporary files for storing results
-          echo "[]" > new_csrs.json
-          echo "[]" > duplicate_csrs.json
-          
-          # Process all CSR files in the repository
-          find . -name "*.csr" -type f | while read -r csr_file; do
+            # Create temporary files for storing results
+            echo "[]" > new_csrs.json
+            echo "[]" > duplicate_csrs.json
+    
+            # Initialize arrays for storing results
+            new_csrs=()
+            duplicate_csrs=()
+    
+            # Process all CSR files in the repository
+            find . -name "*.csr" -type f | while read -r csr_file; do
             # Extract CSR information
             subject=$(openssl req -in "$csr_file" -noout -subject 2>/dev/null)
             pubkey=$(openssl req -in "$csr_file" -noout -pubkey 2>/dev/null | openssl md5 | cut -d' ' -f2)
-            
+      
             if [ -n "$subject" ]; then
-              # Create JSON object for current CSR
-              csr_info=$(jq -n \
-                --arg file "$csr_file" \
-                --arg subject "$subject" \
-                --arg pubkey "$pubkey" \
-                --arg date "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-                '{file: $file, subject: $subject, pubkey: $pubkey, date: $date}')
-              
-              # Check for duplicates in existing database
-              is_duplicate=$(jq --argjson csr "$csr_info" '.csrs[] | select(.pubkey == $csr.pubkey or .subject == $csr.subject)' .github/csr_db.json)
-              
-              if [ -n "$is_duplicate" ]; then
-                echo "$csr_info" | jq -c '.' >> duplicate_csrs.json
-              else
-                echo "$csr_info" | jq -c '.' >> new_csrs.json
-              fi
+            # Create JSON object for current CSR
+            csr_info=$(jq -n \
+            --arg file "$csr_file" \
+            --arg subject "$subject" \
+            --arg pubkey "$pubkey" \
+            --arg date "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
+            '{file: $file, subject: $subject, pubkey: $pubkey, date: $date}')
+        
+            # Check for duplicates in existing database
+            is_duplicate=$(jq --argjson csr "$csr_info" '.csrs[] | select(.pubkey == $csr.pubkey or .subject == $csr.subject)' .github/csr_db.json)
+        
+            if [ -n "$is_duplicate" ]; then
+              duplicate_csrs+=("$csr_info")
+            else
+              new_csrs+=("$csr_info")
             fi
-          done
+              fi
+            done
+    
+            # Write arrays to files
+            printf '%s\n' "${new_csrs[@]}" | jq -s '.' > new_csrs.json
+            printf '%s\n' "${duplicate_csrs[@]}" | jq -s '.' > duplicate_csrs.json
+    
+            # Set output for use in other steps
+            echo "duplicates_found=$(jq 'length > 0' duplicate_csrs.json)" >> $GITHUB_OUTPUT
 
       - name: Update CSR database
         run: |
