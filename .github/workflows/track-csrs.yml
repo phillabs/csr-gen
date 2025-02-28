@@ -154,4 +154,4 @@ jobs:
                 "description": "Duplicate CSRs detected or workflow failed. Please check the latest report.",
                 "color": 16711680
               }]
-            }' ${{ secrets.DISCORD_WEBHOOK_URL }}
+            }' ${{ secrets.DISCORD_WEBHOOK }}
