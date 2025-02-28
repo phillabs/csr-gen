@@ -56,6 +56,8 @@ jobs:
     
             # Process all CSR files in the repository
             find . -name "*.csr" -type f | while read -r csr_file; do
+                echo "Processing $csr_file"
+            done
             # Extract CSR information
             subject=$(openssl req -in "$csr_file" -noout -subject 2>/dev/null)
             pubkey=$(openssl req -in "$csr_file" -noout -pubkey 2>/dev/null | openssl md5 | cut -d' ' -f2)
