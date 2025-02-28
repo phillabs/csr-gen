@@ -157,16 +157,3 @@ jobs:
           git add .github/csr_db.json
           git commit -m "Update CSR database" || echo "No changes to commit"
           git push
-
-
-
-      - name: Send Discord notification
-        if: failure() || steps.process-csrs.outputs.duplicates_found == 'true'
-        run: |
-            curl -H "Content-Type: application/json" -X POST -d '{
-              "embeds": [{
-                "title": "CSR Tracking Alert",
-                "description": "Duplicate CSRs detected or workflow failed. Please check the latest report.",
-                "color": 16711680
-              }]
-            }' ${{ secrets.DISCORD_WEBHOOK }}
