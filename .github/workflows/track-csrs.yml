@@ -54,9 +54,9 @@ jobs:
             #duplicate_csrs=()
     
             # Process all CSR files in the repository
-           # find . -name "*.csr" -type f | while read -r csr_file; do
-            #    echo "Processing $csr_file"
-            #done
+            find . -name "*.csr" -type f | while read -r csr_file; do
+                echo "Processing $csr_file"
+            done
             # Extract CSR information
             subject=$(openssl req -in "$csr_file" -noout -subject 2>/dev/null)
             pubkey=$(openssl req -in "$csr_file" -noout -pubkey 2>/dev/null | openssl md5 | cut -d' ' -f2)
@@ -78,7 +78,7 @@ jobs:
             else
               new_csrs+=("$csr_info")
             fi
-              fi
+          fi
             done
     
             # Write arrays to files
