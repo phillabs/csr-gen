@@ -41,7 +41,6 @@ jobs:
             # Validate JSON format
             jq '.' .github/csr_db.json || (echo '{"csrs": []}' > .github/csr_db.json)
      
-
       - name: Process CSR files
         id: process-csrs
         run: |
