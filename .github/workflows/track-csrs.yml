@@ -60,6 +60,9 @@ jobs:
             # Extract CSR information
             subject=$(openssl req -in "$csr_file" -noout -subject 2>/dev/null)
             pubkey=$(openssl req -in "$csr_file" -noout -pubkey 2>/dev/null | openssl md5 | cut -d' ' -f2)
+
+             echo $subject
+             echo $pubkey
       
             if [ -n "$subject" ]; then
             # Create JSON object for current CSR
