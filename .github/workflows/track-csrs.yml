@@ -48,7 +48,10 @@ jobs:
             # Create temporary files for storing results
             echo "[]" > new_csrs.json
             echo "[]" > duplicate_csrs.json
-    
+
+            cat new_csrs.json
+            cat duplicate_csrs.json
+            
             # Initialize arrays for storing results
             new_csrs=()
             duplicate_csrs=()
