@@ -21,7 +21,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install OpenSSL
+      - name: Cache OpenSSL and jq
+        uses: actions/cache@v3
+        with:
+          path: /usr/local/lib/openssl
+          key: ${{ runner.os }}-openssl-${{ hashFiles('**/*.csr') }}
+
+      - name: Install OpenSSL and jq
         run: |
           sudo apt-get update
           sudo apt-get install -y openssl jq
@@ -110,7 +116,6 @@ jobs:
             echo "::warning::Duplicate CSRs detected! Check the report for details."
           else
             echo "No duplicates found." >> report.md
-          fi
 
       - name: Create or update report issue
         if: github.event_name != 'pull_request'
