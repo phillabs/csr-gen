@@ -19,7 +19,6 @@ on:
   pull_request:
     branches: [ main ]
 
-
 jobs:
   validate-csrs:
     runs-on: ubuntu-latest
