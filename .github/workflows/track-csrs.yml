@@ -24,7 +24,10 @@ jobs:
             /usr/bin/openssl
             /usr/bin/jq
           key: ${{ runner.os }}-openssl-jq-${{ hashFiles('**/*.csr') }}
-      
+
+      - name: Debug Cache Key
+        run: echo "Cache key: ${{ runner.os }}-openssl-jq-${{ hashFiles('**/*.csr') }}"
+        
       - name: Install OpenSSL and jq
         if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
