@@ -23,6 +23,8 @@ jobs:
             /usr/bin/openssl
             /usr/bin/jq
           key: ${{ runner.os }}-openssl-jq-${{ hashFiles('**/*.csr') }}
+          restore-keys: |
+            ${{ runner.os }}-openssl-jq-
 
       - name: Debug Cache Key
         run: |
