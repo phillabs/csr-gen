@@ -103,9 +103,8 @@ jobs:
         run: |
           # Merge new CSRs into database
           jq -s '.[0].csrs += .[1] | .[0]' .github/csr_db.json new_csrs.json > temp.json && mv temp.json .github/csr_db.json
-
           echo "Contents of .github/csr_db.json after merge:"
-          cat .github/csr_db.json  
+          cat .github/csr_db.json
       
       - name: Generate Report
         id: report
