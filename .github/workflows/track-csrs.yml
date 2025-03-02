@@ -22,12 +22,14 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Cache OpenSSL and jq
+        id: openssl-cache
         uses: actions/cache@v3
         with:
           path: /usr/local/lib/openssl
           key: ${{ runner.os }}-openssl-${{ hashFiles('**/*.csr') }}
 
       - name: Install OpenSSL and jq
+        if: steps.openssl-cache.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y openssl jq
