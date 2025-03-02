@@ -65,6 +65,10 @@ jobs:
 
               # Check for duplicates in existing database
               is_duplicate=$(jq --argjson csr "$csr_info" '.csrs[] | select(.pubkey == $csr.pubkey or .subject == $csr.subject)' .github/csr_db.json)
+              if [ $? -ne 0 ]; then
+                echo "Error processing jq command for $csr_file"
+                exit 1
+              fi
 
               if [ -n "$is_duplicate" ]; then
                 duplicate_csrs+=("$csr_info")
@@ -79,16 +83,28 @@ jobs:
             echo "[]" > new_csrs.json
           else
             printf '%s\n' "${new_csrs[@]}" | jq -s '.' > new_csrs.json
+            if [ $? -ne 0 ]; then
+              echo "Error writing new CSRs to file."
+              exit 1
+            fi
           fi
 
           if [ ${#duplicate_csrs[@]} -eq 0 ]; then
             echo "[]" > duplicate_csrs.json
           else
             printf '%s\n' "${duplicate_csrs[@]}" | jq -s '.' > duplicate_csrs.json
+            if [ $? -ne 0 ]; then
+              echo "Error writing duplicate CSRs to file."
+              exit 1
+            fi
           fi
 
           # Set output for use in other steps
           echo "duplicates_found=$(jq 'length > 0' duplicate_csrs.json)" >> $GITHUB_OUTPUT
+          if [ $? -ne 0 ]; then
+            echo "Error setting GitHub output."
+            exit 1
+          fi
 
       - name: Update CSR database
         run: |
