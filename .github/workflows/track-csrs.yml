@@ -1,4 +1,4 @@
-name: Track and Validate CSR Files
+name: Track and Validate CSR Files!
 
 on:
   push:
