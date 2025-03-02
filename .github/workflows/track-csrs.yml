@@ -1,179 +1,167 @@
-name: Track and Validate CSR Files!
+name: "Track and Validate CSR Files!"
 
 on:
   push:
     branches: [ main ]
-    paths:
-      - '**.csr'
+    paths: [ '**.csr' ]
   pull_request:
     branches: [ main ]
-    paths:
-      - '**.csr'
-  # Uncomment to enable daily checks
-  # schedule:
-  #   - cron: '0 0 * * *'  # Daily check of existing CSRs
+    paths: [ '**.csr' ]
 
 jobs:
   validate-csrs:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout repository
+      - name: Checkout Repository
         uses: actions/checkout@v3
-
+      
       - name: Cache OpenSSL and jq
-        id: openssl-cache
         uses: actions/cache@v3
+        id: cache-tools
         with:
-          path: /usr/local/lib/openssl
-          key: ${{ runner.os }}-openssl-${{ hashFiles('**/*.csr') }}
-
+          path: |
+            /usr/bin/openssl
+            /usr/bin/jq
+          key: ${{ runner.os }}-openssl-jq-${{ hashFiles('**/*.csr') }}
+      
       - name: Install OpenSSL and jq
-        if: steps.openssl-cache.outputs.cache-hit != 'true'
+        if: steps.cache-tools.outputs.cache-hit != 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y openssl jq
-
-      - name: Create CSR tracking database if not exists
+      
+      - name: Create CSR Tracking Database
         run: |
           mkdir -p .github
           if [ ! -f .github/csr_db.json ]; then
             echo '{"csrs": []}' > .github/csr_db.json
           fi
           # Validate JSON format
-          jq '.' .github/csr_db.json || (echo '{"csrs": []}' > .github/csr_db.json)
-
-      - name: Process CSR files
-        id: process-csrs
+          cat .github/csr_db.json | jq . > /dev/null
+      
+      - name: Process CSR Files
+        id: process_csrs
         run: |
-          # Create temporary files for storing results
-          echo "[]" > new_csrs.json
-          echo "[]" > duplicate_csrs.json
-
-          # Initialize arrays for storing results
+          # Initialize temp files
+          echo '[]' > new_csrs.json
+          echo '[]' > duplicate_csrs.json
+          
+          # Initialize arrays for new and duplicate CSRs
           new_csrs=()
           duplicate_csrs=()
-
-          # Process all CSR files in the repository
-          find . -name "*.csr" -type f | while read -r csr_file; do
-            # Extract CSR information
-            subject=$(openssl req -in "$csr_file" -noout -subject 2>/dev/null)
-            pubkey=$(openssl req -in "$csr_file" -noout -pubkey 2>/dev/null | openssl md5 | cut -d' ' -f2)
-
-            if [ -n "$subject" ]; then
-              # Create JSON object for current CSR
-              csr_info=$(jq -n --arg file "$csr_file" --arg subject "$subject" --arg pubkey "$pubkey" --arg date "$(date -u +"%Y-%m-%dT%H:%M:%SZ")" \
-              '{file: $file, subject: $subject, pubkey: $pubkey, date: $date}')
-
-              # Check for duplicates in existing database
-              is_duplicate=$(jq --argjson csr "$csr_info" '.csrs[] | select(.pubkey == $csr.pubkey or .subject == $csr.subject)' .github/csr_db.json)
-              if [ $? -ne 0 ]; then
-                echo "Error processing jq command for $csr_file"
-                exit 1
-              fi
-
-              if [ -n "$is_duplicate" ]; then
-                duplicate_csrs+=("$csr_info")
-              else
-                new_csrs+=("$csr_info")
-              fi
+          
+          # Process each CSR file
+          for csr_file in $(find . -name "*.csr" -not -path "./.git/*"); do
+            echo "Processing $csr_file"
+            
+            # Extract subject and public key from CSR
+            subject=$(openssl req -in "$csr_file" -noout -subject | sed 's/subject=//')
+            pubkey=$(openssl req -in "$csr_file" -noout -pubkey | openssl pkey -pubin -outform DER | sha256sum | cut -d' ' -f1)
+            
+            # Check if this CSR is already in the database
+            if jq -e --arg pubkey "$pubkey" '.csrs[] | select(.pubkey == $pubkey)' .github/csr_db.json > /dev/null; then
+              echo "Duplicate found: $csr_file"
+              duplicate_csrs+=("$csr_file")
+            else
+              echo "New CSR: $csr_file"
+              new_csrs+=("$csr_file")
+              
+              # Add to new_csrs.json
+              jq --arg file "$csr_file" --arg subject "$subject" --arg pubkey "$pubkey" \
+                 '. += [{"file": $file, "subject": $subject, "pubkey": $pubkey}]' new_csrs.json > temp.json && mv temp.json new_csrs.json
+            fi
+            
+            # If duplicate, add to duplicate_csrs.json
+            if [[ " ${duplicate_csrs[@]} " =~ " ${csr_file} " ]]; then
+              jq --arg file "$csr_file" --arg subject "$subject" --arg pubkey "$pubkey" \
+                 '. += [{"file": $file, "subject": $subject, "pubkey": $pubkey}]' duplicate_csrs.json > temp.json && mv temp.json duplicate_csrs.json
             fi
           done
-
-          # Write arrays to files
-          if [ ${#new_csrs[@]} -eq 0 ]; then
-            echo "[]" > new_csrs.json
-          else
-            printf '%s\n' "${new_csrs[@]}" | jq -s '.' > new_csrs.json
-            if [ $? -ne 0 ]; then
-              echo "Error writing new CSRs to file."
-              exit 1
-            fi
-          fi
-
-          if [ ${#duplicate_csrs[@]} -eq 0 ]; then
-            echo "[]" > duplicate_csrs.json
-          else
-            printf '%s\n' "${duplicate_csrs[@]}" | jq -s '.' > duplicate_csrs.json
-            if [ $? -ne 0 ]; then
-              echo "Error writing duplicate CSRs to file."
-              exit 1
-            fi
-          fi
-
-          # Set output for use in other steps
-          echo "duplicates_found=$(jq 'length > 0' duplicate_csrs.json)" >> $GITHUB_OUTPUT
-          if [ $? -ne 0 ]; then
-            echo "Error setting GitHub output."
-            exit 1
-          fi
-
-      - name: Update CSR database
+          
+          # Set output
+          echo "duplicates_found=$([ ${#duplicate_csrs[@]} -gt 0 ] && echo "true" || echo "false")" >> $GITHUB_OUTPUT
+      
+      - name: Update CSR Database
         run: |
           # Merge new CSRs into database
-          jq -s '.[0].csrs += .[1] | .[0]' .github/csr_db.json new_csrs.json > temp_database.json
-          mv temp_database.json .github/csr_db.json
-
-      - name: Generate report
+          jq -s '.[0].csrs += .[1] | .[0]' .github/csr_db.json new_csrs.json > temp.json && mv temp.json .github/csr_db.json
+      
+      - name: Generate Report
+        id: report
         run: |
-          echo "### CSR Tracking Report" > report.md
-          echo "Generated at: $(date -u)" >> report.md
+          echo "## CSR Tracking Report" > report.md
           echo "" >> report.md
-
-          echo "#### New CSRs" >> report.md
-          if [ -s new_csrs.json ] && [ "$(jq 'length' new_csrs.json)" != "0" ]; then
-            jq -r '.[] | "- File: \(.file)\n  Subject: \(.subject)\n  Date: \(.date)\n"' new_csrs.json >> report.md
+          
+          # Add new CSRs section
+          echo "### New CSRs" >> report.md
+          echo "" >> report.md
+          if [ "$(jq '. | length' new_csrs.json)" -gt 0 ]; then
+            echo "| File | Subject |" >> report.md
+            echo "|------|---------|" >> report.md
+            jq -r '.[] | "| \(.file) | \(.subject) |"' new_csrs.json >> report.md
           else
             echo "No new CSRs found." >> report.md
           fi
-
           echo "" >> report.md
-          echo "#### Duplicate CSRs Detected" >> report.md
-          if [ -s duplicate_csrs.json ] && [ "$(jq 'length' duplicate_csrs.json)" != "0" ]; then
-            jq -r '.[] | "- File: \(.file)\n  Subject: \(.subject)\n  Date: \(.date)\n"' duplicate_csrs.json >> report.md
-            echo "::warning::Duplicate CSRs detected! Check the report for details."
+          
+          # Add duplicate CSRs section
+          echo "### Duplicate CSRs" >> report.md
+          echo "" >> report.md
+          if [ "$(jq '. | length' duplicate_csrs.json)" -gt 0 ]; then
+            echo "| File | Subject | Duplicate of |" >> report.md
+            echo "|------|---------|--------------|" >> report.md
+            jq -r '.[] | "| \(.file) | \(.subject) | Multiple occurrences |"' duplicate_csrs.json >> report.md
           else
-            echo "No duplicates found." >> report.md
-
-      - name: Create or update report issue
-        if: github.event_name != 'pull_request'
+            echo "No duplicate CSRs found." >> report.md
+          fi
+          
+          REPORT_CONTENT=$(cat report.md)
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          cat report.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      
+      - name: Create or Update Report Issue
         uses: actions/github-script@v6
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const report = fs.readFileSync('report.md', 'utf8');
-
+            const reportContent = fs.readFileSync('report.md', 'utf8');
+            
+            // Find if there's an existing CSR report issue
             const issues = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              labels: ['csr-tracking'],
-              state: 'open'
+              state: 'open',
+              labels: ['csr-report']
             });
-
-            const issueBody = `${report}\n\nLast updated: ${new Date().toISOString()}`;
-
+            
             if (issues.data.length > 0) {
+              // Update existing issue
               await github.rest.issues.update({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issues.data[0].number,
-                body: issueBody
+                body: reportContent
               });
+              console.log(`Updated issue #${issues.data[0].number}`);
             } else {
-              await github.rest.issues.create({
+              // Create new issue
+              const newIssue = await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 title: 'CSR Tracking Report',
-                body: issueBody,
-                labels: ['csr-tracking']
+                body: reportContent,
+                labels: ['csr-report']
               });
+              console.log(`Created issue #${newIssue.data.number}`);
             }
-
-      - name: Commit updated database
-        if: github.event_name != 'pull_request'
+      
+      - name: Commit Updated Database
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .github/csr_db.json
-          git commit -m "Update CSR database" || echo "No changes to commit"
+          git commit -m "Update CSR database [skip ci]" || echo "No changes to commit"
           git push
