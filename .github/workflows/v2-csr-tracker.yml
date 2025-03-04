@@ -40,13 +40,15 @@ jobs:
       
       - name: Create CSR Tracking Database
         run: |
-          mkdir -p .github
-          if [ ! -f .github/csr_db.json ]; then
-            echo '{"csrs": []}' > .github/csr_db.json
-          fi
-          # Validate JSON format
-          cat .github/csr_db.json | jq . > /dev/null
-      
+            mkdir -p .github
+            if [ ! -f .github/csr_db.json ] || ! jq -e .github/csr_db.json > /dev/null 2>&1; then
+              echo '{"csrs": []}' > .github/csr_db.json
+            fi
+            # Validate JSON format
+            cat .github/csr_db.json | jq . > /dev/null
+
+
+
       - name: Process CSR Files
         id: process_csrs
         run: |
