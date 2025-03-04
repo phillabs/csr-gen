@@ -1,0 +1,28 @@
+name: "Track and Request Approval for CSRs"
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ '**.csr' ]
+
+jobs:
+  request-approval:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Validate and Create Approval Issues
+        run: |
+          for csr_file in $(find . -name "*.csr" -not -path "./.git/*"); do
+            subject=$(openssl req -in "$csr_file" -noout -subject | sed 's/subject=//')
+            pubkey=$(openssl req -in "$csr_file" -noout -pubkey | openssl pkey -pubin -outform DER | sha256sum | cut -d' ' -f1)
+
+            # Create an issue for approval
+            gh issue create --title "Approval Request for CSR: $csr_file" \
+              --body "### CSR Details\n\n**File**: $csr_file\n**Subject**: $subject\n**Public Key Hash**: $pubkey\n\nPlease approve or reject this CSR by commenting on this issue." \
+              --label "csr-approval"
+          done

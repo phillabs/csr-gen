@@ -1,0 +1,34 @@
+name: "Process Approved CSRs"
+
+on:
+  issue_comment:
+    types: [ created ]
+
+jobs:
+  process-approved-csrs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Check for Approval Comment
+        id: check-approval
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const comment = context.payload.comment.body.toLowerCase();
+            if (comment.includes("approve")) {
+              core.setOutput("approved", "true");
+            } else {
+              core.setOutput("approved", "false");
+            }
+
+      - name: Process CSR
+        if: steps.check-approval.outputs.approved == 'true'
+        run: |
+          echo "Processing approved CSR..."
+          # Add your CSR processing logic here
